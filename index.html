@@ -1,6 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Docker镜像拉取工具</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            background-color: #f5f5f5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
 
-使用方法: sh -c "$(wget -qO- https://your-cloudflare-pages-url/docker_pull.sh)" -- <镜像名称> [配置目录]
- 
-<镜像名称> 要拉取的 Docker 镜像名称
-[配置目录] 可选，存放配置文件的目录
+        .container {
+            background-color: #fff;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            width: 500px;
+        }
 
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            margin-bottom: 15px;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        .output {
+            margin-top: 20px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+            white-space: pre-wrap;
+            word-break: break-all;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Docker镜像拉取工具</h1>
+        <input type="text" id="image-name" placeholder="镜像名称">
+        <input type="text" id="config-dir" placeholder="配置目录 (可选)">
+        <button onclick="pullImage()">拉取镜像</button>
+        <div class="output" id="output"></div>
+    </div>
+
+    <script>
+        function pullImage() {
+            let imageName = document.getElementById("image-name").value;
+            let configDir = document.getElementById("config-dir").value;
+            let output = document.getElementById("output");
+
+            let command = `sh -c "$(wget -qO- https://your-cloudflare-pages-url/docker_pull.sh)" -- ${imageName}`;
+            if (configDir) {
+                command += ` ${configDir}`;
+            }
+
+            fetch("https://your-cloudflare-pages-url/docker_pull.sh", {
+                method: "GET",
+                headers: {
+                    "Content-Type": "text/plain"
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.text();
+            })
+            .then(script => {
+                output.textContent = `正在拉取镜像...${'\n'}`;
+                let worker = new Worker(URL.createObjectURL(new Blob([script])));
+                worker.onmessage = (event) => {
+                    output.textContent += event.data + '\n';
+                };
+                worker.postMessage(command);
+            })
+            .catch(error => {
+                output.textContent = `错误：${error.message}`;
+            });
+        }
+    </script>
+</body>
+</html>
